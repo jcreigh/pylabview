@@ -15,8 +15,8 @@ vi2 = readVI.VI(fn2)
 
 for i in range(0, len(vi1.blocks_arr)):
     name = vi1.blocks_arr[i].name
-    data1 = vi1.get(name, forceRaw=True).raw_data[0]
-    data2 = vi2.get(name, forceRaw=True).raw_data[0]
+    data1 = vi1.get(name).raw_data[0]
+    data2 = vi2.get(name).raw_data[0]
     if name == "BDHb":
         open("dumps/BDHb1.dmp", "wb").write(data1)
         open("dumps/BDHb2.dmp", "wb").write(data2)

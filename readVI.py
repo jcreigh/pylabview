@@ -1,6 +1,5 @@
 #!/usr/bin/python
 
-import types
 from binstreamer import BinaryStream
 from Block import *
 from LVmisc import StrToHex
@@ -41,34 +40,58 @@ class VI():
             else:
                 raise IOError("Wrong RSRC-Header")
 
-        header['DataSetOffset'] = reader.readUInt32()
-        header['DataSetSize'] = reader.readUInt32()
-        header['DataSetInt1'] = reader.readUInt32()
-        header['DataSetInt2'] = reader.readUInt32()
-        header['DataSetInt3'] = reader.readUInt32()
+        t = header['DataSet'] = {}
+        t['Offset'] = reader.readUInt32()
+        t['Size'] = reader.readUInt32()
+        t['Int1'] = reader.readUInt32()
+        t['Int2'] = reader.readUInt32()
+        t['Int3'] = reader.readUInt32()
 
-        header['BlockInfoOffset'] = header['RSRCOffset'] + reader.readUInt32()
-        header['BlockInfoSize'] = reader.readUInt32()
+        t = header['BlockInfo'] = {}
+        t['Offset'] = header['RSRCOffset'] + reader.readUInt32()
+        t['Size'] = reader.readUInt32()
 
         self.header = header
 
-        reader.seek(header['BlockInfoOffset'])
+        reader.seek(header['BlockInfo']['Offset'])
 
         blockInfoCount = reader.readUInt32() + 1
         if blockInfoCount > 1000:
             raise IOError("VI.BlockInfoCount too large?")
 
-        blocks_arr = []
         blocks = {}
-        for i in range(0, blockInfoCount):
-            blocks_arr.append(Block(self))
-            blocks[blocks_arr[-1].name] = blocks_arr[-1]
+        blocks_arr = []
+        block_headers = []
 
-        self.blocks = blocks
+        for i in range(0, blockInfoCount):
+            t = {}
+            t['Name'] = reader.read(4)
+            t['Count'] = reader.readUInt32() + 1
+            t['Offset'] = header['BlockInfo']['Offset'] + reader.readUInt32()
+            block_headers.append(t)
+
+        self.block_headers = block_headers
+
+        for i in range(0, blockInfoCount):
+            block_head = block_headers[i]
+            name = block_head['Name']
+            if name in globals() and isinstance(globals()[name], type):
+                print name, "!",
+                block = globals()[name](self, block_head)
+            else:
+                block = Block(self, block_head)
+            blocks_arr.append(block)
+
         self.blocks_arr = blocks_arr
 
         for i in range(0, blockInfoCount):
-            blocks_arr[i].getData()
+            block = blocks_arr[i]
+            block.getData()
+            blocks[block.name] = block
+
+        self.blocks = blocks
+
+        self.icon = self.blocks['icl8'].loadIcon() if 'icl8' in self.blocks else None
 
     def getBlockIdByBlockName(self, name):
         for i in range(0, len(self.blockInfo)):
@@ -76,21 +99,13 @@ class VI():
                 return i
         return None
 
-    def get(self, name, forceRaw=False):
-        if name in globals() and not forceRaw:
-            if isinstance(globals()[name], types.ClassType):
-                return globals()[name](self)
-        if name in self.blocks:
-                return self.blocks[name]
-        return None
-
-    def calcPassword(self, newPassword=""):
-        LVSR = self.get("LVSR")
-        LIBN = self.get("LIBN")
-        BDH = self.get("BDH")
+    def calcPassword(self, newPassword="", write=False):
+        LVSR = self.blocks["LVSR"]
+        BDH = self.blocks["BDHc"] if "BDHc" in self.blocks else self.blocks["BDHb"]
+        LIBN_content = self.blocks["LIBN"].content if "LIBN" in self.blocks else ""
 
         md5Password = md5(newPassword).digest()
-        md5Hash1 = md5(md5Password + LIBN.content + LVSR.raw).digest()
+        md5Hash1 = md5(md5Password + LIBN_content + LVSR.raw_data[0]).digest()
         md5Hash2 = md5(md5Hash1 + BDH.hash).digest()
 
         out = {}
@@ -100,6 +115,10 @@ class VI():
         out['hash_2'] = md5Hash2
         self.m_password_set = out
 
+    def get(self, name):
+        if name in self.blocks:
+            return self.blocks[name]
+        return None
 
 if __name__ == "__main__":
     n = "test2.vi"
@@ -121,5 +140,5 @@ if __name__ == "__main__":
     print "hash_2      : " + StrToHex(vi.m_password_set['hash_2'])
     print vi.get("vers").version
     print vi.get("LVSR").version
-    #vi.Icon.icon.save("out.png")
+    vi.icon.save("out.png")
 
