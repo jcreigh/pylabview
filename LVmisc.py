@@ -50,3 +50,20 @@ LABVIEW_COLOR_PALETTE = [0xF1F1F1, 0xCCFFFF, 0x99FFFF, 0x66FFFF, 0x33FFFF,
                          0x220000, 0x110000, 0xEEEEEE, 0xDDDDDD, 0xBBBBBB,
                          0xAAAAAA, 0x888888, 0x777777, 0x555555, 0x444444,
                          0x222222, 0x111111, 0x0]
+
+
+def getVersion(vcode):
+    ver = {}
+    ver['major'] = ((vcode >> 28) & 0x0F) * 10 + ((vcode >> 24) & 0x0F)
+    ver['minor'] = (vcode >> 20) & 0x0F
+    ver['bugfix'] = (vcode >> 16) & 0x0F
+    ver['stage'] = (vcode >> 13) & 0x07
+    ver['flags'] = (vcode >> 8) & 0x1F  # 5 bit??
+    ver['build'] = ((vcode >> 4) & 0x0F) * 10 + ((vcode >> 0) & 0x0F)
+    ver['stage_text'] = LABVIEW_VERSION_STAGE[0]
+    if ver['stage'] < len(LABVIEW_VERSION_STAGE):
+        ver['stage_text'] = LABVIEW_VERSION_STAGE[ver['stage']]
+    return ver
+
+def StrToHex(x, sep=" "):
+    return str.join(sep, [("0" + hex(ord(a))[2:])[-2:] for a in x])

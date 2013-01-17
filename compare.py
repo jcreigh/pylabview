@@ -13,11 +13,10 @@ if len(sys.argv) > 1:
 vi1 = readVI.VI(fn1)
 vi2 = readVI.VI(fn2)
 
-for i in range(0, len(vi1.blockInfo)):
-    name = vi1.blockInfo[i]['BlockName']
-    comp = name == "BDHb"
-    data1 = vi1.getBlockContentByName(name, useCompression=comp).readBytes()
-    data2 = vi2.getBlockContentByName(name, useCompression=comp).readBytes()
+for i in range(0, len(vi1.blocks_arr)):
+    name = vi1.blocks_arr[i].name
+    data1 = vi1.get(name, forceRaw=True).raw_data[0]
+    data2 = vi2.get(name, forceRaw=True).raw_data[0]
     if name == "BDHb":
         open("dumps/BDHb1.dmp", "wb").write(data1)
         open("dumps/BDHb2.dmp", "wb").write(data2)
